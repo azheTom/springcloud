@@ -2,10 +2,8 @@ package com.atguigu.springcloud.controller;
 
 import com.atguigu.springcloud.entities.CommonResult;
 import com.atguigu.springcloud.entities.Payment;
-import com.atguigu.springcloud.lb.LoadBalancer;
+import com.atguigu.springcloud.service.OrderService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cloud.client.ServiceInstance;
-import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,8 +12,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.Resource;
-import java.net.URI;
-import java.util.List;
 
 /**
  * @Description TODO
@@ -32,10 +28,7 @@ public class OrderController {
     private RestTemplate restTemplate;
 
     @Resource
-    private DiscoveryClient discoveryClient;
-
-    @Resource
-    private LoadBalancer loadBalancer;
+    private OrderService orderService;
 
     @GetMapping("consumer/create/payment")
     public CommonResult create(Payment payment){
@@ -44,7 +37,8 @@ public class OrderController {
 
     @GetMapping("consumer/payment/get/{id}")
     public CommonResult getPaymentById(@PathVariable("id") Long id){
-        return restTemplate.getForObject(PAYMENT_URL+"/payment/get/"+id,CommonResult.class);
+//        return restTemplate.getForObject(PAYMENT_URL+"/payment/get/"+id,CommonResult.class);
+        return orderService.getPaymentById(id);
     }
 
     @GetMapping("/consumer/payment/getForEntity/{id}")
@@ -59,20 +53,10 @@ public class OrderController {
         }
     }
 
-    @GetMapping(value = "/consumer/payment/lb")
-    public String getPaymentLB()
+    @GetMapping(value = "/consumer/payment/feign/timeout")
+    public String paymentFeignTimeout()
     {
-        List<ServiceInstance> instances = discoveryClient.getInstances("cloud-payment-service");
-
-        if(instances == null || instances.size() <= 0)
-        {
-            return null;
-        }
-
-        ServiceInstance serviceInstance = loadBalancer.instances(instances);
-        URI uri = serviceInstance.getUri();
-
-        return restTemplate.getForObject(uri+"/payment/lb",String.class);
-
+        // OpenFeign客户端一般默认等待1秒钟
+        return orderService.paymentFeignTimeout();
     }
 }
